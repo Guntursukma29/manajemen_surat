@@ -75,7 +75,7 @@
                         <div class="col">
                             <div class="input-group input-group-static mb-4">
                                 <label class="ms-0">File Surat</label>
-                                <input class="form-control" type="file" id="filesurat" name="filesurat" required>
+                                <input class="form-control" type="file" id="filesurat" name="filesurat">
                             </div>
                         </div>
                     @endif

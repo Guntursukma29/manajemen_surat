@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\User;
@@ -10,43 +9,29 @@ use Illuminate\Support\Facades\Auth;
 
 class SuratMahasiswaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
-{
-    $title = "Selamat Datang";
-    $user = Auth::user(); // Get the authenticated user
-    $prodiId = $user->prodi_id; // Get the prodi_id of the authenticated user
+    {
+        $title = "Selamat Datang";
+        $user = Auth::user();
+        $prodiId = $user->prodi_id;
 
-    $jenisSurat = JenisSuratMahasiswa::all();
-    $requestSurat = RequestSurat::where('prodi_id', $prodiId)->get(); // Filter request surat by prodi_id
+        $jenisSurat = JenisSuratMahasiswa::all();
+        $requestSurat = RequestSurat::where('prodi_id', $prodiId)
+        ->whereNull('surat_dikirim')
+        ->get();
+        return view('mahasiswa.index', compact('requestSurat', 'jenisSurat', 'title'));
+    }
 
-    // Debugging the retrieved data
-    // dd($prodiId, $requestSurat);
-
-    return view('mahasiswa.index', compact('requestSurat', 'jenisSurat', 'title'));
-}
-
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         //
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(RequestSurat $requestSurat)
     {
         return view('request_surat.show', compact('requestSurat'));
@@ -68,7 +53,6 @@ class SuratMahasiswaController extends Controller
             'angkatan' => 'required|integer',
             'prodi' => 'required',
             'keperluan' => 'required',
-           
         ]);
 
         $requestSurat->update($request->all());
@@ -84,19 +68,31 @@ class SuratMahasiswaController extends Controller
         return redirect()->route('surat_mahasiswa.index')
                          ->with('success', 'Request Surat deleted successfully.');
     }
-    public function rekap()
-{
-    $title = "Rekap Surat Mahasiswa";
-    $user = Auth::user(); // Get the authenticated user
-    $prodiId = $user->prodi_id; // Get the prodi_id of the authenticated user
-    $jenisSurat = JenisSuratMahasiswa::all();
 
-    // Fetch request surat data where surat has been sent
-    $requestSurat = RequestSurat::where('prodi_id', $prodiId)
-                                ->whereNotNull('surat_dikirim') // Assuming 'surat_dikirim' column indicates the surat has been sent
-                                ->get();
+    public function rekap(Request $request)
+    {
+        $title = "Rekap Surat Mahasiswa";
+        $user = Auth::user();
+        $prodiId = $user->prodi_id;
+        $jenisSurat = JenisSuratMahasiswa::all();
 
-    return view('mahasiswa.rekap', compact('requestSurat', 'title'));
-}
+        $query = RequestSurat::where('prodi_id', $prodiId)
+                             ->whereNotNull('surat_dikirim');
 
+        if ($request->filled('angkatan')) {
+            $query->where('angkatan', $request->angkatan);
+        }
+
+        if ($request->filled('tanggal_start') && $request->filled('tanggal_end')) {
+            $query->whereBetween('created_at', [$request->tanggal_start, $request->tanggal_end]);
+        }
+
+        if ($request->filled('keperluan_id')) {
+            $query->where('jenis_surat_id', $request->keperluan_id);
+        }
+
+        $requestSurat = $query->get();
+
+        return view('mahasiswa.rekap', compact('requestSurat', 'title', 'jenisSurat'));
+    }
 }

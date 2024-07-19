@@ -61,6 +61,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('surat_mahasiswa', SuratMahasiswaController::class);
     Route::post('reply', [ReplyController::class, 'store'])->name('reply.store');
     Route::get('/surat-mahasiswa/rekap', [SuratMahasiswaController::class, 'rekap'])->name('mahasiswa.rekap');
+    Route::get('/mahasiswa/rekap', [SuratMahasiswaController::class, 'rekap'])->name('filter_mahasiswa.rekap');
+
 
 });
 

@@ -31,51 +31,59 @@ class PengajuanController extends Controller
     
 
     public function store(Request $request)
-    {
-        $request->validate([
-            'nama_surat' => 'required|string|max:255',
-            'perihal' => 'required|string|max:255',
-            'jenis_surat_id' => 'required|exists:jenis_surat,id',
-            'filesurat' => 'nullable|file|mimes:pdf,doc,docx,jpg,png|max:2048',
-            'nomor_surat' => 'required|string|unique:surat,nomor_surat|max:255',
-        ]);
+{
+    $rules = [
+        'nama_surat' => 'required|string|max:255',
+        'perihal' => 'required|string|max:255',
+        'jenis_surat_id' => 'required|exists:jenis_surat,id',
+        'nomor_surat' => 'required|string|unique:surat,nomor_surat|max:255',
+    ];
 
-        $surat = new Surat();
-        $surat->pengirim_id = auth()->user()->id;
-
-        if (Auth::user()->role_id == 1) { 
-            $surat->penerima_id = $request->penerima_id;
-            $surat->asal_surat = $request->asal_surat; 
-        } else { 
-            $surat->penerima_id = 1; 
-            $surat->tujuan = $request->tujuan; 
-        }
-
-        $surat->tanggal = now();
-        $surat->nama = auth()->user()->name;
-        $surat->nama_surat = $request->nama_surat;
-        $surat->perihal = $request->perihal;
-        $surat->jenis_surat_id = $request->jenis_surat_id;
-        $surat->nomor_surat = $request->nomor_surat;
-        $surat->status = 'pending';
-
-        if ($request->hasFile('filesurat')) {
-            $file = $request->file('filesurat');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/surat', $filename);
-            $surat->filesurat = $filename;
-        }
-
-        $surat->save();
-
-        // Kirim notifikasi ke penerima surat
-        $penerima = User::find($surat->penerima_id);
-        if ($penerima) {
-            $penerima->notify(new SuratMasukNotification($surat));
-        }
-
-        return redirect()->route('pengajuansurat.index')->with('success', 'Surat berhasil diajukan');
+    if (Auth::user()->role_id != 1) { // Non-admin users must include a file
+        $rules['filesurat'] = 'required|file|mimes:pdf,doc,docx,jpg,png|max:2048';
     }
+
+    $request->validate($rules);
+
+    $surat = new Surat();
+    $surat->pengirim_id = auth()->user()->id;
+
+    if (Auth::user()->role_id == 1) { 
+        $surat->penerima_id = $request->penerima_id;
+        $surat->asal_surat = $request->asal_surat; 
+    } else { 
+        $surat->penerima_id = 1; 
+        $surat->tujuan = $request->tujuan; 
+    }
+
+    $surat->tanggal = now();
+    $surat->nama = auth()->user()->name;
+    $surat->nama_surat = $request->nama_surat;
+    $surat->perihal = $request->perihal;
+    $surat->jenis_surat_id = $request->jenis_surat_id;
+    $surat->nomor_surat = $request->nomor_surat;
+    $surat->status = 'pending';
+
+    if (Auth::user()->role_id != 1 && $request->hasFile('filesurat')) { // Only handle file for non-admin users
+        $file = $request->file('filesurat');
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $file->storeAs('public/surat', $filename);
+        $surat->filesurat = $filename;
+    } else {
+        $surat->filesurat = ''; // Set a default value or allow it to be nullable
+    }
+
+    $surat->save();
+
+    // Kirim notifikasi ke penerima surat
+    $penerima = User::find($surat->penerima_id);
+    if ($penerima) {
+        $penerima->notify(new SuratMasukNotification($surat));
+    }
+
+    return redirect()->route('pengajuansurat.index')->with('success', 'Surat berhasil diajukan');
+}
+
 
     public function updateStatus(Request $request, $id)
     {

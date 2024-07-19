@@ -24,10 +24,10 @@ class ReplyController extends Controller
         if ($request->hasFile('reply_file')) {
             $file = $request->file('reply_file');
             $fileName = time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('reply_files', $fileName);
+            $file->move(public_path('public/reply_files'), $fileName);
             $requestSurat->surat_dikirim = $fileName;
-
         }
+        
     
         try {
             $userName = Auth::user()->name;
@@ -35,8 +35,9 @@ class ReplyController extends Controller
             $email->from('your_email@gmail.com', $userName);
             
             Mail::to($toEmail)->send($email);
+
             $requestSurat->save();
-            
+        
             return redirect()->route('surat_mahasiswa.index')
                 ->with('success', 'Reply sent successfully to ' . $toEmail);
         } catch (\Exception $e) {
